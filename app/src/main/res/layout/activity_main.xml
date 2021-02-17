@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <Button
+        android:id="@+id/gps"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Location"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintHorizontal_bias="0.237"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.048" />
+
+    <TextView
+        android:id="@+id/locationid"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="@+id/gps"
+        app:layout_constraintHorizontal_bias="0.476"
+        app:layout_constraintStart_toStartOf="@+id/gps"
+        tools:ignore="MissingConstraints"
+        app:layout_constraintTop_toBottomOf="@+id/gps"
+        tools:layout_editor_absoluteY="90dp" />
+
+    <Button
+        android:id="@+id/SensorBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sensors"
+        app:layout_constraintEnd_toEndOf="@+id/locationid"
+        app:layout_constraintStart_toStartOf="@+id/locationid"
+        app:layout_constraintTop_toBottomOf="@+id/locationid"
+        tools:ignore="MissingConstraints"
+        tools:layout_editor_absoluteY="143dp" />
+
+    <TextView
+        android:id="@+id/SensorList"
+        android:layout_width="wrap_content"
+        android:layout_height="70dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/SensorBtn" />
+
+    <Button
+        android:id="@+id/bluethooth"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Check bluethooth"
+        app:layout_constraintEnd_toEndOf="@+id/SensorList"
+        app:layout_constraintHorizontal_bias="1.0"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/SensorList" />
+
+    <TextView
+        android:id="@+id/bluethoothList"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginLeft="10dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@+id/SensorList"
+        app:layout_constraintHorizontal_bias="0.637"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_height="70dp"
+        app:layout_constraintTop_toBottomOf="@+id/bluethooth" />
+    <Button
+        android:id="@+id/wifibtn"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp"
+        android:text="wifi"
+        app:layout_constraintEnd_toEndOf="@+id/SensorList"
+        app:layout_constraintHorizontal_bias="0.637"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/bluethoothList" />
+
+    <TextView
+        android:id="@+id/wifiList"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginLeft="10dp"
+        app:layout_constraintEnd_toEndOf="@+id/SensorList"
+        app:layout_constraintHorizontal_bias="0.637"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/wifibtn" />
+    <Button
+        android:id="@+id/batteryBtn"
+        android:text="Battery"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginLeft="10dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@+id/SensorList"
+        app:layout_constraintHorizontal_bias="0.637"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/wifiList" />
+    <Button
+        android:id="@+id/gsm"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp"
+        android:text="GSM"
+        app:layout_constraintEnd_toEndOf="@+id/SensorList"
+        app:layout_constraintHorizontal_bias="0.637"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/wifiList" />
+    <TextView
+        android:id="@+id/gsmList"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp"
+        android:text="GSM"
+        app:layout_constraintEnd_toEndOf="@+id/SensorList"
+        app:layout_constraintHorizontal_bias="0.637"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/gsm" />
+    <TextView
+        android:id="@+id/batteryList"
+        android:layout_width="match_parent"
+        android:layout_marginTop="8dp"
+        android:layout_marginLeft="10dp"
+        app:layout_constraintEnd_toEndOf="@+id/SensorList"
+        app:layout_constraintHorizontal_bias="0.637"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/gsmList" />
+
+
+
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
