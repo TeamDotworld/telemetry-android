@@ -269,8 +269,8 @@ class MainActivity : AppCompatActivity() {
             ) != PackageManager.PERMISSION_GRANTED
         ) {
         }
-        val IMEINumber: String = gsm.getDeviceId()
-        val SIMSerialNumber: String = gsm.simSerialNumber
+//        val IMEINumber: String = gsm.getDeviceId()
+//        val SIMSerialNumber: String = gsm.simSerialNumber
         val networkCountryISO: String = gsm.networkCountryIso
         val SIMCountryISO: String = gsm.simCountryIso
         val voiceMailNumber: String? = gsm.voiceMailNumber
@@ -278,12 +278,12 @@ class MainActivity : AppCompatActivity() {
         val simType: String = getSiMType(gsm.phoneType)
 
         var text =
-            "GSM  \n IMEINumber:${IMEINumber} \n SIMSerialNumber: ${SIMSerialNumber} \n networkCountryISO: ${networkCountryISO} \n " +
+            "GSM  \n IMEINumber: \n SIMSerialNumber:  \n networkCountryISO: ${networkCountryISO} \n " +
                     "voiceMailNumber: ${voiceMailNumber}\n SIMCountryISO:${SIMCountryISO} \n softwareVersion :${softwareVersion} \n simType:$simType"
 
         return GsmDetails(
-            IMEINumber,
-            SIMSerialNumber,
+
+//            SIMSerialNumber,
             networkCountryISO,
             voiceMailNumber,
             SIMCountryISO,
@@ -314,31 +314,6 @@ class MainActivity : AppCompatActivity() {
         })
 
     }
-
-    fun checkPermission(): Boolean {
-        val accessLocation = ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
-        )
-        val fineLOcation = ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.ACCESS_FINE_LOCATION
-        )
-        val bluetoothAdmin = ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.BLUETOOTH_ADMIN
-        )
-        val bluetooth = ContextCompat.checkSelfPermission(
-            this,
-            android.Manifest.permission.BLUETOOTH
-        )
-
-        return accessLocation == PackageManager.PERMISSION_GRANTED && fineLOcation == PackageManager.PERMISSION_GRANTED &&
-                bluetoothAdmin == PackageManager.PERMISSION_GRANTED && bluetooth == PackageManager.PERMISSION_GRANTED
-
-
-    }
-
 
     val batteryBroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {

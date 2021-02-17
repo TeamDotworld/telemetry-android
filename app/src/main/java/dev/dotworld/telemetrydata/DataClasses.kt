@@ -10,8 +10,8 @@ data class WifiDetails(
 
     )
 data class GsmDetails(
-    private  var IMEINumber:String?=null,
-    private  var SIMSerialNumber:String?=null,
+//    private  var IMEINumber:String?=null, // not work in android 10
+//    private  var SIMSerialNumber:String?=null, // not work in android 10
     private  var networkCountryISO:String?=null,
     private  var voiceMailNumber:String?=null,
     private  var SIMCountryISO:String?=null,
