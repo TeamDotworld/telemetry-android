@@ -2,6 +2,7 @@ package dev.dotworld.telemetrydata
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ActivityManager
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
@@ -12,23 +13,26 @@ import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.net.wifi.WifiManager
-import android.os.BatteryManager
-import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
+import android.os.*
+import android.os.storage.StorageManager
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyManager
 import android.text.format.Formatter
+import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.google.gson.Gson
+import dev.dotworld.telemetrydata.utils.RootUitls
 import okhttp3.*
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
 
 
 class MainActivity : AppCompatActivity() {
@@ -42,6 +46,9 @@ class MainActivity : AppCompatActivity() {
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION,
         Manifest.permission.READ_PHONE_STATE,
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+
         Manifest.permission.READ_PRECISE_PHONE_STATE,
         Manifest.permission.BLUETOOTH,
         Manifest.permission.BLUETOOTH_ADMIN
@@ -60,6 +67,7 @@ class MainActivity : AppCompatActivity() {
     protected var webSocket: WebSocket? = null
     private var isWebSocketOn = false
 
+    @RequiresApi(Build.VERSION_CODES.N)
     @SuppressLint("SetTextI18n", "HardwareIds")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,6 +86,8 @@ class MainActivity : AppCompatActivity() {
         var gsmText = findViewById<TextView>(R.id.gsmList)
         batteryText = findViewById<TextView>(R.id.batteryList)
         gsm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
+//        getMemoryDetails()
+        getStorageDetails()
 
         findViewById<Button>(R.id.gps).setOnClickListener {
             Log.d(TAG, "onCreate: ")
@@ -96,7 +106,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.bluethooth).setOnClickListener {
             bluetoothText.visibility = View.VISIBLE
             bluetoothText.text = getBluetooth().toString()
-    }
+        }
         findViewById<Button>(R.id.wifibtn).setOnClickListener {
             wifiText.visibility = View.VISIBLE
             wifiText.setText(getWifi().toString())
@@ -218,14 +228,26 @@ class MainActivity : AppCompatActivity() {
             || ActivityCompat.checkSelfPermission(
                 this,
                 permissionsRequired[1]
-            ) != PackageManager.PERMISSION_GRANTED || ActivityCompat.checkSelfPermission(
+            ) != PackageManager.PERMISSION_GRANTED
+            || ActivityCompat.checkSelfPermission(
                 this,
                 permissionsRequired[2]
             ) != PackageManager.PERMISSION_GRANTED
+            || ActivityCompat.checkSelfPermission(
+                this,
+                permissionsRequired[3]
+            ) != PackageManager.PERMISSION_GRANTED
+            || ActivityCompat.checkSelfPermission(
+                this,
+                permissionsRequired[4]
+            ) != PackageManager.PERMISSION_GRANTED
         ) {
+
             if (ActivityCompat.shouldShowRequestPermissionRationale(this, permissionsRequired[0])
                 || ActivityCompat.shouldShowRequestPermissionRationale(this, permissionsRequired[1])
                 || ActivityCompat.shouldShowRequestPermissionRationale(this, permissionsRequired[2])
+                || ActivityCompat.shouldShowRequestPermissionRationale(this, permissionsRequired[3])
+                || ActivityCompat.shouldShowRequestPermissionRationale(this, permissionsRequired[4])
             ) {
                 ActivityCompat.requestPermissions(
                     this,
@@ -243,11 +265,40 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     @SuppressLint("HardwareIds")
     private fun getWifi(): WifiDetails {
         val info = wifiManager.connectionInfo
         var text =
             "wifi  \n ipAddres:${info.ipAddress} \n networkId: ${info.networkId} \n speed: ${info.linkSpeed} \n ssid name: ${info.ssid}\n bssid:${info.bssid} \n mac address${info.macAddress}"
+        var scanresult = wifiManager.scanResults
+        var ListOFavailableWifiList = ArrayList<availableWifiList>()
+        scanresult.iterator().forEach { res ->
+            Log.d(TAG, "getWifi:${res.SSID} ")
+            Log.d(TAG, "getWifi frequency:${res.frequency} ")
+            Log.d(TAG, "getWifi channelWidth:${res.channelWidth} ")
+            Log.d(TAG, "getWifi: level${res.level} ")
+            Log.d(TAG, "getWifi:venueName ${res.venueName} ")
+            Log.d(TAG, "getWifi: BSSID ${res.BSSID} ")
+            Log.d(TAG, "getWifi: capabilities ${res.capabilities} ")
+            Log.d(TAG, "getWifi: isPasspointNetwork ${res.isPasspointNetwork} ")
+            Log.d(TAG, "getWifi: timestamp ${res.timestamp} ")
+            ListOFavailableWifiList.add(
+                availableWifiList(
+                    res.SSID,
+                    res.frequency.toString(),
+                    res.channelWidth.toString(),
+                    res.level.toString(),
+                    res.venueName.toString(),
+                    res.BSSID,
+                    res.capabilities,
+                    res.isPasspointNetwork,
+                    res.timestamp.toString()
+                )
+            )
+
+        }
+
 
 
         return WifiDetails(
@@ -256,7 +307,8 @@ class MainActivity : AppCompatActivity() {
             info.linkSpeed.toString(),
             info.ssid,
             info.bssid,
-            info.macAddress
+            info.macAddress,
+            ListOFavailableWifiList
         )
 
 
@@ -296,6 +348,7 @@ class MainActivity : AppCompatActivity() {
         val mainHandler = Handler(Looper.getMainLooper())
 
         var loop = mainHandler.post(object : Runnable {
+            @RequiresApi(Build.VERSION_CODES.M)
             override fun run() {
                 //logic
                 if (isWebSocketOn) {
@@ -304,6 +357,11 @@ class MainActivity : AppCompatActivity() {
                     webSocket?.send(Gson().toJson(getBluetooth()))
                     webSocket?.send(Gson().toJson(getGsm()))
                     webSocket?.send(Gson().toJson(getLocation()))
+                    webSocket?.send(Gson().toJson(getDeviceDetails()))
+                    webSocket?.send(Gson().toJson(getMemoryDetails()))
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                        webSocket?.send(Gson().toJson(getStorageDetails()))
+                    }
 
                 }
 
@@ -313,6 +371,220 @@ class MainActivity : AppCompatActivity() {
 
         })
 
+    }
+
+    private fun getDeviceDetails(): DeviceDetails {
+        Log.d(TAG, "getDeviceDetails: serial" + Build.SERIAL)
+        Log.d(TAG, "getDeviceDetails: model " + Build.MODEL)
+        Log.d(TAG, "getDeviceDetails:  ID " + Build.ID)
+        Log.d(TAG, "getDeviceDetails: " + Build.MANUFACTURER)
+        Log.d(TAG, "getDeviceDetails: " + Build.BRAND)
+        Log.d(TAG, "getDeviceDetails: " + Build.BOARD)
+        Log.d(TAG, "getDeviceDetails: " + Build.TYPE)
+        Log.d(TAG, "getDeviceDetails: user " + Build.USER)
+        Log.d(TAG, "getDeviceDetails: base os version " + Build.VERSION.BASE_OS)
+        Log.d(TAG, "getDeviceDetails: sdk version " + Build.VERSION.SDK_INT)
+        Log.d(TAG, "getDeviceDetails: HOST " + Build.HOST)
+        Log.d(TAG, "getDeviceDetails:  FINGERPRINT " + Build.FINGERPRINT)
+        var displayMetrics = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(displayMetrics)
+        var width = displayMetrics.widthPixels
+        var height = displayMetrics.heightPixels
+        Log.d(TAG, "getDeviceDetails: os  version " + Build.VERSION.RELEASE)
+        Log.d(TAG, "getDeviceDetails: hardware " + Build.HARDWARE)
+        Log.d(TAG, "getDeviceDetails: " + Build.DEVICE)
+        Log.d(TAG, "getDeviceDetails: dispaly " + Build.DISPLAY)
+        Log.d(TAG, "getDeviceDetails: producat " + Build.PRODUCT)
+        Log.d(TAG, "getDeviceDetails: type " + Build.TIME)
+        Log.d(TAG, "getDeviceDetails: unkown " + Build.UNKNOWN)
+        Log.d(TAG, "getDeviceDetails: " + Build.Partition.PARTITION_NAME_SYSTEM)
+        Log.d(TAG, "getDeviceDetails: os  SECURITY_PATCH " + Build.VERSION.SECURITY_PATCH)
+        Log.d(TAG, "getDeviceDetails: " + Build.getRadioVersion())
+        Log.d(TAG, "getDeviceDetails:  rooted?" + RootUitls.checkRootedOrNot())
+        Log.d(TAG, "getDeviceDetails:  CPU?" + Build.CPU_ABI)
+        var cpu = ""
+        try {
+            val DATA = arrayOf("/system/bin/cat", "/proc/cpuinfo")
+            val processBuilder = ProcessBuilder(*DATA)
+            val process = processBuilder.start()
+            val inputStream = process.inputStream
+            val byteArry = ByteArray(1024)
+            while (inputStream.read(byteArry) != -1) {
+                cpu += String(byteArry)
+            }
+            inputStream.close()
+
+            Log.d("CPU_INFO length", "${cpu.length}")
+        } catch (ex: java.lang.Exception) {
+            ex.printStackTrace()
+        }
+
+        return DeviceDetails(
+            Build.SERIAL,
+            Build.MODEL,
+            Build.ID,
+            Build.MANUFACTURER,
+            Build.BRAND,
+            Build.BOARD,
+            Build.TYPE,
+            Build.USER,
+            Build.VERSION.BASE_OS,
+            Build.VERSION.SDK_INT.toString(),
+            Build.HOST,
+            Build.FINGERPRINT,
+            "$width x $height",
+            Build.VERSION.RELEASE,
+            Build.HARDWARE,
+            Build.DISPLAY,
+            Build.VERSION.SECURITY_PATCH,
+            RootUitls.checkRootedOrNot(),
+            cpu
+        )
+
+
+    }
+
+    private fun getMemoryDetails(): MemoryDetails {
+        val memoryInfo = ActivityManager.MemoryInfo()
+        val activityManager = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        activityManager.getMemoryInfo(memoryInfo)
+        val mb = 1024 * 1024
+        Log.d(TAG, "getMemoryDetails: " + memoryInfo.availMem / mb)
+        Log.d(TAG, "getMemoryDetails: " + memoryInfo.lowMemory)
+        Log.d(TAG, "getMemoryDetails: " + memoryInfo.threshold / mb)
+        Log.d(TAG, "getMemoryDetails: " + memoryInfo.totalMem / mb)
+        val runtime = Runtime.getRuntime()
+        Log.d(TAG, "getMemoryDetails: ${runtime.maxMemory() / mb}")
+        Log.d(TAG, "getMemoryDetails: ${runtime.totalMemory() / mb}")
+        Log.d(TAG, "getMemoryDetails: ${runtime.freeMemory() / mb}")
+
+
+        val path = Environment.getDataDirectory()
+        val stat = StatFs(path.path)
+        val blockSize = stat.blockSizeLong
+        val totalBlocks = stat.blockCountLong
+        (totalBlocks * blockSize)
+        Log.d(
+            TAG, "getMemoryDetails: total " + Formatter.formatFileSize(
+                this,
+                totalBlocks * blockSize
+            )
+        )
+
+
+
+
+        return MemoryDetails(
+            memoryInfo.availMem / mb,
+            memoryInfo.lowMemory,
+            memoryInfo.threshold / mb,
+            memoryInfo.totalMem / mb,
+            runtime.maxMemory() / mb,
+            runtime.totalMemory() / mb,
+            runtime.freeMemory() / mb
+        )
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    private fun getStorageDetails() {
+        getInternalavailableStorage()
+        getInternalTotalStorage()
+        getExternalTotalStorage()
+        getExternalAvailabletorage()
+        val storageManager: StorageManager = this.getSystemService<StorageManager>(
+            StorageManager::class.java
+        )
+        val volumes = storageManager.storageVolumes
+        volumes.iterator().forEach { sd ->
+
+            Log.d(TAG, "getStorageDetails: " + sd.toString())
+////            Log.d(TAG, "getStorageDetails: "+sd.isEmulated)
+//            Log.d(TAG, "getStorageDetails: "+sd.isPrimary)
+//            Log.d(TAG, "getStorageDetails: "+sd.isRemovable)
+//            Log.d(TAG, "getStorageDetails: "+sd.mediaStoreVolumeName)
+//            Log.d(TAG, "getStorageDetails: "+sd.state)
+//            Log.d(TAG, "getStorageDetails: "+sd.uuid)
+        }
+        storageDetails(
+            getInternalavailableStorage(), getInternalTotalStorage(),
+            getExternalAvailabletorage(), getExternalTotalStorage()
+        )
+    }
+
+    private fun getInternalavailableStorage(): String? {
+        val path: File = Environment.getDataDirectory()
+        val stat = StatFs(path.getPath())
+        val blockSize = stat.blockSizeLong
+        val availableBlocks = stat.availableBlocksLong
+        Log.d(
+            TAG, "Storage: avilable " + Formatter.formatFileSize(
+                this,
+                availableBlocks * blockSize
+            )
+        )
+        return Formatter.formatFileSize(this, availableBlocks * blockSize)
+    }
+
+    private fun getInternalTotalStorage(): String? {
+        val path: File = Environment.getDataDirectory()
+        val stat = StatFs(path.getPath())
+        val blockSize = stat.blockSizeLong
+        val totalBlocks = stat.blockCountLong
+        Log.d(
+            TAG, "Storage: total " + Formatter.formatFileSize(
+                this,
+                totalBlocks * blockSize
+            )
+        )
+        return Formatter.formatFileSize(this, totalBlocks * blockSize)
+    }
+
+    private fun getExternalTotalStorage(): String? {
+        val path: File = Environment.getExternalStorageDirectory()
+        val stat = StatFs(path.getPath())
+        val blockSize = stat.blockSizeLong
+        val totalBlocks = stat.blockCountLong
+        Log.d(
+            TAG, "Storage: External  total " + Formatter.formatFileSize(
+                this,
+                totalBlocks * blockSize
+            )
+        )
+        return Formatter.formatFileSize(this, totalBlocks * blockSize)
+    }
+
+    private fun getExternalAvailabletorage(): String? {
+        val path: File = Environment.getExternalStorageDirectory()
+        val stat = StatFs(path.getPath())
+        val blockSize = stat.blockSizeLong
+        val totalBlocks = stat.availableBlocksLong
+        Log.d(
+            TAG, "Storage: External avilable " + Formatter.formatFileSize(
+                this,
+                totalBlocks * blockSize
+            )
+        )
+        return Formatter.formatFileSize(this, totalBlocks * blockSize)
+    }
+
+    fun cpuTemperature(): Float {
+        val process: java.lang.Process
+        return try {
+            process = Runtime.getRuntime().exec("cat sys/class/thermal/thermal_zone0/temp")
+            process.waitFor()
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            val line: String = reader.readLine()
+            if (line != null) {
+                val temp = line.toFloat()
+                temp / 1000.0f
+            } else {
+                51.0f
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            0.0f
+        }
     }
 
     val batteryBroadcastReceiver = object : BroadcastReceiver() {
