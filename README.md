@@ -64,7 +64,14 @@ An Android App written in Kotlin to get telemetry data.
     * display
     * lastSecurityPatchDate
     * rooted
-    * cpuDetails
+    * cpuModeName
+    *vendor_id
+    *cpu_family
+    *cpu_mhz
+    *siblings
+    *cache_alignment
+    *process
+    *OTGsupport
 
 * Memory Details
     * availMem
@@ -75,8 +82,20 @@ An Android App written in Kotlin to get telemetry data.
     * runTimeTotalMemory
     * runTimeFreeMemory
 
-* storage Details
+* Storage Details
     * totalInternalStorage
     * availableInternalStorage
     * totalExternalStorage
     * availableExternalStorage
+
+* Installed apps
+    * name
+    * packageName
+    * className
+    * dataDir
+* Camera details
+    * cameraCount
+    * cameraDetails
+        - title
+        - cameraId
+        - format

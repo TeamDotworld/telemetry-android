@@ -85,9 +85,20 @@ data class DeviceDetails(
     var display: String? = null,
     var lastSecurityPatchDate: String? = null,
     var rooted: Boolean,
-    var cpuDetails: String? = null
+    var cpuModeName: String? = null,
+    var  vendor_id: String? = null,
+    var  cpuFamily: String? = null,
+    var  cpu_mhz: String? = null,
+    var  siblings: String? = null,
+    var  cache_alignment: String? = null,
+    var  processor: Int? = null,
+    var  OTGsupport: Boolean
 
 )
+data class cameraDetails (
+    private var cameraCount:Int,
+    private var cameraDetails:List<FormatItem>
+        )
 
 // get in mb
 data class MemoryDetails(
@@ -107,3 +118,13 @@ data class StorageDetails(
     private var availableExternalStorage: String? = null,
 
     )
+data class InstalledApps(
+    private var name: String?=null,
+    private var packageName: String?=null,
+    private var className: String?=null,
+    private var dataDir: String?=null,
+)
+data class FormatItem(
+    val title: String,
+    val cameraId: String,
+    val format: Int)

@@ -9,8 +9,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.ImageFormat
 import android.hardware.Sensor
 import android.hardware.SensorManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CameraMetadata
 import android.net.wifi.WifiManager
 import android.os.*
 import android.telephony.PhoneStateListener
@@ -28,13 +32,84 @@ import androidx.core.app.ActivityCompat
 import com.google.gson.Gson
 import dev.dotworld.telemetrydata.utils.RootUitls
 import okhttp3.*
-import java.io.File
+import java.io.*
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 class MainActivity : AppCompatActivity() {
 
     companion object {
         val TAG = MainActivity.javaClass.simpleName
+
+        private fun lensOrientationString(value: Int) = when(value) {
+            CameraCharacteristics.LENS_FACING_BACK -> "Back"
+            CameraCharacteristics.LENS_FACING_FRONT -> "Front"
+            CameraCharacteristics.LENS_FACING_EXTERNAL -> "external"
+            else -> "Unknown"
+        }
+
+        @SuppressLint("InlinedApi")
+        fun enumerateCameras(cameraManager: CameraManager): List<FormatItem> {
+            val availableCameras: MutableList<FormatItem> = mutableListOf()
+
+            val cameraIds = cameraManager.cameraIdList.filter {
+                val characteristics = cameraManager.getCameraCharacteristics(it)
+                val capabilities = characteristics.get(
+                    CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES
+                )
+                capabilities?.contains(
+                    CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE
+                ) ?: false
+            }
+
+
+            cameraIds.forEach { id ->
+
+                Log.d("cameraId", "enumerateCameras: Cameraid $id")
+                val characteristics = cameraManager.getCameraCharacteristics(id)
+                val orientation = lensOrientationString(characteristics.get(CameraCharacteristics.LENS_FACING)!!)
+
+                val capabilities = characteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)!!
+                val outputFormats = characteristics.get(
+                    CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP
+                )!!.outputFormats
+
+                availableCameras.add(FormatItem("$orientation JPEG ($id)", id, ImageFormat.JPEG))
+
+                if (capabilities.contains(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_RAW) &&
+                    outputFormats.contains(ImageFormat.RAW_SENSOR)) {
+                    availableCameras.add(
+                        FormatItem(
+                            "$orientation RAW ($id)",
+                            id,
+                            ImageFormat.RAW_SENSOR
+                        )
+                    )
+                }
+
+                if (capabilities.contains(
+                        CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_DEPTH_OUTPUT
+                    ) &&
+                    outputFormats.contains(ImageFormat.DEPTH_JPEG)) {
+                    availableCameras.add(
+                        FormatItem(
+                            "$orientation DEPTH ($id)",
+                            id,
+                            ImageFormat.DEPTH_JPEG
+                        )
+                    )
+                }
+            }
+
+            return availableCameras
+        }
+
+        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+        fun getListOFCamaras(context: Context): List<FormatItem> {
+            val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            return   enumerateCameras(cameraManager) //google2
+        }
 
     }
 
@@ -70,6 +145,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         requestPermission()
         initWS()
+        Log.d(TAG, "onCreate: hasUsbHostFeature: ${hasUsbHostFeature(this)}")
+        Log.d(TAG, "onCreate: getListOFCamaras"+ getListOFCamaras(this))
         var batteryIntent = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter() as BluetoothAdapter
@@ -84,6 +161,7 @@ class MainActivity : AppCompatActivity() {
 //        getMemoryDetails()
         getStorageDetails()
         getDeviceDetails()
+        getAllInstallApps()
         batteryStatusAndDetails(this)
 
         findViewById<Button>(R.id.gps).setOnClickListener {
@@ -135,6 +213,9 @@ class MainActivity : AppCompatActivity() {
         }
         gsm.listen(call, PhoneStateListener.LISTEN_CALL_STATE);
 
+    }
+    fun hasUsbHostFeature(context: Context): Boolean {
+        return context.packageManager.hasSystemFeature(PackageManager.FEATURE_USB_HOST)
     }
 
     private fun getSiMType(type: Int): String {
@@ -360,6 +441,8 @@ class MainActivity : AppCompatActivity() {
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
                         webSocket?.send(Gson().toJson(getStorageDetails()))
                     }
+                    webSocket?.send(Gson().toJson(getAllInstallApps()))
+                    webSocket?.send(Gson().toJson(getCameraDetails()))
 
                 }
 
@@ -371,6 +454,7 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    @SuppressLint("NewApi")
     private fun getDeviceDetails(): DeviceDetails {
         Log.d(TAG, "getDeviceDetails: serial" + Build.SERIAL)
         Log.d(TAG, "getDeviceDetails: model " + Build.MODEL)
@@ -399,24 +483,75 @@ class MainActivity : AppCompatActivity() {
         Log.d(TAG, "getDeviceDetails: os  SECURITY_PATCH " + Build.VERSION.SECURITY_PATCH)
         Log.d(TAG, "getDeviceDetails: " + Build.getRadioVersion())
         Log.d(TAG, "getDeviceDetails:  rooted?" + RootUitls.checkRootedOrNot())
-        Log.d(TAG, "getDeviceDetails:  CPU?" + Build.CPU_ABI)
-        var cpu = ""
+        Log.d(TAG, "getDeviceDetails:  CPU?" + Build.SUPPORTED_ABIS)
+
+        Build.SUPPORTED_ABIS.iterator().forEach { i ->
+            Log.d(TAG, "getDeviceDetails  Build.SUPPORTED_ABIS : ${i.toString()}")
+        }
+        var cpuModeName = ""
+        var vendor_id = "no vendor id available"
+        var cpu_family = "no cpu family available"
+        var cpu_mhz = "no cpu_mhz available"
+        var siblings = "no siblings available"
+        var cache_alignment = "no Cache available"
+        var processCount = 0
+        val cpudata = LinkedHashMap<String, String>()
         try {
             val DATA = arrayOf("/system/bin/cat", "/proc/cpuinfo")
             val processBuilder = ProcessBuilder(*DATA)
-            val process = processBuilder.start()
+            var process = processBuilder.start()
             val inputStream = process.inputStream
-            val byteArry = ByteArray(1024)
-            while (inputStream.read(byteArry) != -1) {
-                cpu += String(byteArry)
+            val reader = BufferedReader(InputStreamReader(inputStream))
+            var line = ""
+            while (reader.readLine().also { line = it } != null) {
+                val parts = line.split(":", ignoreCase = true, limit = 2).toTypedArray()
+                if (parts.size >= 2) {
+                    var key = parts[0].trim { it <= ' ' }
+                    key = key.substring(0, 1).toUpperCase(Locale.ROOT) + key.substring(1)
+                    val value = parts[1].trim { it <= ' ' }
+                    Log.d(TAG, "getDeviceDetails cpu: key=${key}, value=${value}")
+                    cpudata.put(key, value)
+                    if (key == "Model name") {
+                        Log.d(TAG, "getDeviceDetails: if")
+                        cpuModeName = value
+                    }
+                    if (key == "Vendor_id") {
+                        Log.d(TAG, "getDeviceDetails: if")
+                        vendor_id = value
+                    }
+                    if (key == "Cpu family") {
+                        Log.d(TAG, "getDeviceDetails: if")
+                        cpu_family = value
+                    }
+                    if (key == "Cpu MHz") {
+                        Log.d(TAG, "getDeviceDetails: if")
+                        cpu_mhz = value
+                    }
+                    if (key == "Siblings") {
+                        Log.d(TAG, "getDeviceDetails: if")
+                        cpu_family = value
+                    }
+                    if (key == "Cache_alignment") {
+                        Log.d(TAG, "Cache_alignment: $value")
+                        cache_alignment = value
+                    }
+                    if (key == "Processor") {
+                        Log.d(TAG, "Cache_alignment: $value")
+                        processCount += 1
+                    }
+
+                }
             }
+            reader.close()
             inputStream.close()
 
-            Log.d("CPU_INFO length", "${cpu.length}")
+
+
+            Log.d("CPU_INFO length", "${cpuModeName.length}")
         } catch (ex: java.lang.Exception) {
             ex.printStackTrace()
         }
-        Log.d(TAG, "getDeviceDetails: cpu"+cpu.toString())
+        Log.d(TAG, "getDeviceDetails: cpu" + cpuModeName.toString())
 
         return DeviceDetails(
             Build.SERIAL,
@@ -437,10 +572,45 @@ class MainActivity : AppCompatActivity() {
             Build.DISPLAY,
             Build.VERSION.SECURITY_PATCH,
             RootUitls.checkRootedOrNot(),
-            cpu
+            cpuModeName,
+            vendor_id,
+            cpu_family,
+            cpu_mhz,
+            siblings,
+            cache_alignment,
+            processCount,
+            hasUsbHostFeature(this)
         )
 
 
+    }
+
+    @SuppressLint("QueryPermissionsNeeded", "NewApi")
+
+    private fun getAllInstallApps(): ArrayList<InstalledApps> {
+        val pm = packageManager
+        val apps = pm.getInstalledApplications(0)
+        var listOfpackageName = ArrayList<InstalledApps>()
+        apps.iterator().forEach { app ->
+            Log.d(
+                TAG, "getAllInstallApps: appname: " +
+                        "${app.name},className " + app.className + "" +
+                        " packageName ${app.packageName}, " +
+                        "dataDir :${app.dataDir}"
+            )
+
+            listOfpackageName.add(
+                InstalledApps(
+                    app.name,
+                    app.packageName,
+                    app.className,
+                    app.dataDir
+                )
+            )
+
+
+        }
+        return listOfpackageName
     }
 
     private fun getMemoryDetails(): MemoryDetails {
@@ -486,9 +656,9 @@ class MainActivity : AppCompatActivity() {
 
     @RequiresApi(Build.VERSION_CODES.N)
     private fun getStorageDetails(): StorageDetails {
-        Log.d(TAG, "getStorageDetails: dedails"+CHECK_EXTERNAL_STORAGE())
+        Log.d(TAG, "getStorageDetails: dedails" + CHECK_EXTERNAL_STORAGE())
         var internalTotalStorage = getInternalTotalStorage()
-        var  internalAvailableStorage =  getInternalAvailableStorage()
+        var internalAvailableStorage = getInternalAvailableStorage()
         var availabeSDcardSize = "no SD card"
         var totalSDcardSize = "no SD card"
         CHECK_EXTERNAL_STORAGE()
@@ -651,6 +821,11 @@ class MainActivity : AppCompatActivity() {
         }
         return BatteryDetails()
     }
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    fun getCameraDetails(): cameraDetails {
+        var camDetails:List<FormatItem>  =getListOFCamaras(this)
+         return cameraDetails(camDetails.size, camDetails)  }
+
 
     fun initWS() {
         Log.d(TAG, "initWS: ")
@@ -702,4 +877,6 @@ class MainActivity : AppCompatActivity() {
 //        webSocket?.send("1st")
 
     }
+
+
 }
