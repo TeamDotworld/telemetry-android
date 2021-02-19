@@ -5,7 +5,6 @@ import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -14,7 +13,6 @@ import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.net.wifi.WifiManager
 import android.os.*
-import android.os.storage.StorageManager
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyManager
 import android.text.format.Formatter
@@ -30,9 +28,7 @@ import androidx.core.app.ActivityCompat
 import com.google.gson.Gson
 import dev.dotworld.telemetrydata.utils.RootUitls
 import okhttp3.*
-import java.io.BufferedReader
 import java.io.File
-import java.io.InputStreamReader
 
 
 class MainActivity : AppCompatActivity() {
@@ -75,7 +71,6 @@ class MainActivity : AppCompatActivity() {
         requestPermission()
         initWS()
         var batteryIntent = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        registerReceiver(batteryBroadcastReceiver, batteryIntent)
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         bluetoothAdapter = BluetoothAdapter.getDefaultAdapter() as BluetoothAdapter
         wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
@@ -88,6 +83,8 @@ class MainActivity : AppCompatActivity() {
         gsm = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
 //        getMemoryDetails()
         getStorageDetails()
+        getDeviceDetails()
+        batteryStatusAndDetails(this)
 
         findViewById<Button>(R.id.gps).setOnClickListener {
             Log.d(TAG, "onCreate: ")
@@ -272,7 +269,7 @@ class MainActivity : AppCompatActivity() {
         var text =
             "wifi  \n ipAddres:${info.ipAddress} \n networkId: ${info.networkId} \n speed: ${info.linkSpeed} \n ssid name: ${info.ssid}\n bssid:${info.bssid} \n mac address${info.macAddress}"
         var scanresult = wifiManager.scanResults
-        var ListOFavailableWifiList = ArrayList<availableWifiList>()
+        var ListOFavailableWifiList = ArrayList<AvailableWifiList>()
         scanresult.iterator().forEach { res ->
             Log.d(TAG, "getWifi:${res.SSID} ")
             Log.d(TAG, "getWifi frequency:${res.frequency} ")
@@ -284,7 +281,7 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "getWifi: isPasspointNetwork ${res.isPasspointNetwork} ")
             Log.d(TAG, "getWifi: timestamp ${res.timestamp} ")
             ListOFavailableWifiList.add(
-                availableWifiList(
+                AvailableWifiList(
                     res.SSID,
                     res.frequency.toString(),
                     res.channelWidth.toString(),
@@ -359,6 +356,7 @@ class MainActivity : AppCompatActivity() {
                     webSocket?.send(Gson().toJson(getLocation()))
                     webSocket?.send(Gson().toJson(getDeviceDetails()))
                     webSocket?.send(Gson().toJson(getMemoryDetails()))
+                    webSocket?.send(Gson().toJson(batteryStatusAndDetails(this@MainActivity)))
                     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
                         webSocket?.send(Gson().toJson(getStorageDetails()))
                     }
@@ -418,6 +416,7 @@ class MainActivity : AppCompatActivity() {
         } catch (ex: java.lang.Exception) {
             ex.printStackTrace()
         }
+        Log.d(TAG, "getDeviceDetails: cpu"+cpu.toString())
 
         return DeviceDetails(
             Build.SERIAL,
@@ -485,34 +484,77 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-
     @RequiresApi(Build.VERSION_CODES.N)
-    private fun getStorageDetails() {
-        getInternalavailableStorage()
-        getInternalTotalStorage()
-        getExternalTotalStorage()
-        getExternalAvailabletorage()
-        val storageManager: StorageManager = this.getSystemService<StorageManager>(
-            StorageManager::class.java
-        )
-        val volumes = storageManager.storageVolumes
-        volumes.iterator().forEach { sd ->
+    private fun getStorageDetails(): StorageDetails {
+        Log.d(TAG, "getStorageDetails: dedails"+CHECK_EXTERNAL_STORAGE())
+        var internalTotalStorage = getInternalTotalStorage()
+        var  internalAvailableStorage =  getInternalAvailableStorage()
+        var availabeSDcardSize = "no SD card"
+        var totalSDcardSize = "no SD card"
+        CHECK_EXTERNAL_STORAGE()
+        if (CHECK_EXTERNAL_STORAGE().isNotEmpty()) {
+            var file = File(CHECK_EXTERNAL_STORAGE())
+            val stat = StatFs(file.getPath())
+            availabeSDcardSize =
+                Formatter.formatFileSize(this, stat.blockSizeLong * stat.availableBlocksLong)
+            totalSDcardSize =
+                Formatter.formatFileSize(this, stat.blockSizeLong * stat.blockCountLong)
 
-            Log.d(TAG, "getStorageDetails: " + sd.toString())
-////            Log.d(TAG, "getStorageDetails: "+sd.isEmulated)
-//            Log.d(TAG, "getStorageDetails: "+sd.isPrimary)
-//            Log.d(TAG, "getStorageDetails: "+sd.isRemovable)
-//            Log.d(TAG, "getStorageDetails: "+sd.mediaStoreVolumeName)
-//            Log.d(TAG, "getStorageDetails: "+sd.state)
-//            Log.d(TAG, "getStorageDetails: "+sd.uuid)
+            Log.d(
+                TAG, "getStorageDetails: availableSizeInBytes" + Formatter.formatFileSize(
+                    this,
+                    stat.blockSizeLong * stat.availableBlocksLong
+                )
+            )
+            Log.d(
+                TAG, "getStorageDetails: availableSizeInBytes total " + Formatter.formatFileSize(
+                    this,
+                    stat.blockSizeLong * stat.blockCountLong
+                )
+            )
+
         }
-        storageDetails(
-            getInternalavailableStorage(), getInternalTotalStorage(),
-            getExternalAvailabletorage(), getExternalTotalStorage()
+        return StorageDetails(
+            internalTotalStorage,
+            internalAvailableStorage,
+            totalSDcardSize,
+            availabeSDcardSize
         )
     }
 
-    private fun getInternalavailableStorage(): String? {
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+    fun CHECK_EXTERNAL_STORAGE(): String {
+        val storage_directory = File("/storage")
+        var storage: File
+        for (i in storage_directory.listFiles().indices) {
+            storage = storage_directory.listFiles()[i]
+            if (storage.absolutePath.contains("emulated")) {
+                continue
+            }
+            if (storage.absolutePath == "/storage/self") {
+                continue
+            }
+
+            if (Environment.getExternalStorageState(storage).equals(Environment.MEDIA_MOUNTED)) {
+                if (Environment.isExternalStorageEmulated(storage) === false) {
+                    val finalStorage = storage
+                    runOnUiThread {
+                        Log.d(
+                            TAG,
+                            "Storage External SD Card exists. Path: " + finalStorage.absolutePath
+                        )
+
+                    }
+                    return finalStorage.absolutePath
+                }
+            } else {
+                Log.d(TAG, "No external Storage detected.")
+            }
+        }
+        return ""
+    }
+
+    private fun getInternalAvailableStorage(): String? {
         val path: File = Environment.getDataDirectory()
         val stat = StatFs(path.getPath())
         val blockSize = stat.blockSizeLong
@@ -540,133 +582,74 @@ class MainActivity : AppCompatActivity() {
         return Formatter.formatFileSize(this, totalBlocks * blockSize)
     }
 
-    private fun getExternalTotalStorage(): String? {
-        val path: File = Environment.getExternalStorageDirectory()
-        val stat = StatFs(path.getPath())
-        val blockSize = stat.blockSizeLong
-        val totalBlocks = stat.blockCountLong
-        Log.d(
-            TAG, "Storage: External  total " + Formatter.formatFileSize(
-                this,
-                totalBlocks * blockSize
+    private fun getHealth(health: Int): String {
+        when (health) {
+            BatteryManager.BATTERY_HEALTH_COLD -> return "COLD"
+            BatteryManager.BATTERY_HEALTH_DEAD -> return "DEAD"
+            BatteryManager.BATTERY_HEALTH_GOOD -> return "GOOD"
+            BatteryManager.BATTERY_HEALTH_OVERHEAT -> return "OVERHEAT"
+            BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> return "OVER VOLTAGE"
+            BatteryManager.BATTERY_HEALTH_UNKNOWN -> return "HEALTH_UNKNOWN"
+            else -> return "HEALTH_UNKNOWN"
+        }
+
+    }
+
+    private fun getPluggedType(type: Int): String {
+        when (type) {
+            BatteryManager.BATTERY_PLUGGED_AC -> return "AC"
+            BatteryManager.BATTERY_PLUGGED_USB -> return "USB"
+            BatteryManager.BATTERY_PLUGGED_WIRELESS -> return "WIRELESS"
+            else -> return ""
+        }
+    }
+
+    private fun getBatteryStatus(health: Int): String {
+        when (health) {
+            BatteryManager.BATTERY_STATUS_CHARGING -> return "CHARGING"
+            BatteryManager.BATTERY_STATUS_DISCHARGING -> return "DISCHARGING"
+            BatteryManager.BATTERY_STATUS_FULL -> return "FUll"
+            BatteryManager.BATTERY_STATUS_NOT_CHARGING -> return "NOT_CHARGING"
+            BatteryManager.BATTERY_STATUS_UNKNOWN -> return "UNKNOWN"
+
+            else -> return "UNKNOWN"
+        }
+    }
+
+    fun batteryStatusAndDetails(context: Context): BatteryDetails {
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        val intent = context.registerReceiver(null, filter)
+        val health = intent?.getIntExtra(BatteryManager.EXTRA_HEALTH, 0)
+        val voltage = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0)
+        val plugged = intent?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+        val status = intent?.getIntExtra(BatteryManager.EXTRA_STATUS, 0)
+        val technology = intent?.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY)
+        val rawlevel = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        val temperature = intent?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
+
+        Log.d(TAG, "batteryHealthStatus: plugged" + voltage?.let { getPluggedType(it) })
+        Log.d(TAG, "batteryHealthStatus: technology: " + technology)
+        Log.d(TAG, "batteryHealthStatus: helth " + health?.let { getHealth(it) })
+        Log.d(TAG, "batteryHealthStatus: status :" + status?.let { getBatteryStatus(it) })
+        if (rawlevel != null) {
+            Log.d(TAG, "batteryHealthStatus: leaavel  ${(rawlevel * 100) / scale!!}")
+        }
+        Log.d(TAG, "batteryHealthStatus: voltage" + voltage)
+        Log.d(TAG, "batteryHealthStatus: temperature " + temperature)
+
+        if (rawlevel != null) {
+            return BatteryDetails(
+                plugged?.let { getPluggedType(it) },
+                technology,
+                health?.let { getHealth(it) },
+                status?.let { getBatteryStatus(it) },
+                ((rawlevel * 100) / scale!!).toString(),
+                voltage.toString(),
+                temperature.toString()
             )
-        )
-        return Formatter.formatFileSize(this, totalBlocks * blockSize)
-    }
-
-    private fun getExternalAvailabletorage(): String? {
-        val path: File = Environment.getExternalStorageDirectory()
-        val stat = StatFs(path.getPath())
-        val blockSize = stat.blockSizeLong
-        val totalBlocks = stat.availableBlocksLong
-        Log.d(
-            TAG, "Storage: External avilable " + Formatter.formatFileSize(
-                this,
-                totalBlocks * blockSize
-            )
-        )
-        return Formatter.formatFileSize(this, totalBlocks * blockSize)
-    }
-
-    fun cpuTemperature(): Float {
-        val process: java.lang.Process
-        return try {
-            process = Runtime.getRuntime().exec("cat sys/class/thermal/thermal_zone0/temp")
-            process.waitFor()
-            val reader = BufferedReader(InputStreamReader(process.inputStream))
-            val line: String = reader.readLine()
-            if (line != null) {
-                val temp = line.toFloat()
-                temp / 1000.0f
-            } else {
-                51.0f
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            0.0f
         }
-    }
-
-    val batteryBroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent != null) {
-                val plugged = intent.getIntExtra("plugged", -1)
-                val scale = intent.getIntExtra("scale", -1)
-                val health = intent.getIntExtra("health", 0)
-                val status = intent.getIntExtra("status", 0)
-                val rawlevel = intent.getIntExtra("level", -1)
-                val voltage = intent.getIntExtra("voltage", 0)
-                val temperature = intent.getIntExtra("temperature", 0)
-                val technology = intent.getStringExtra("technology")
-                Log.d(TAG, "onReceive:rawlevel $rawlevel ")
-                Log.d(TAG, "onReceive:scale $scale ")
-                var text =
-                    "Battery  \n plugged:${getPluggedType(plugged)} \n technology: ${technology} \n health: ${
-                        getHealth(
-                            health
-                        )
-                    } \n status: ${getBatteryStatus(status)}\n" +
-                            "  battery :${(rawlevel * 100) / scale} % \n mac voltage:${voltage} \n temperature:$temperature "
-                this@MainActivity.runOnUiThread(java.lang.Runnable { batteryText.text = text })
-
-                if (isWebSocketOn) {
-                    webSocket?.send(
-                        Gson().toJson(
-                            BatteryDetails(
-                                getPluggedType(plugged),
-                                technology,
-                                getHealth(health),
-                                getBatteryStatus(status),
-                                ((rawlevel * 100) / scale).toString(),
-                                voltage.toString(),
-                                temperature.toString()
-                            )
-                        )
-                    )
-
-                }
-            }
-
-
-        }
-
-        private fun getPluggedType(type: Int): String {
-            when (type) {
-                BatteryManager.BATTERY_PLUGGED_AC -> return "AC"
-                BatteryManager.BATTERY_PLUGGED_USB -> return "USB"
-                BatteryManager.BATTERY_PLUGGED_WIRELESS -> return "WIRELESS"
-                else -> return ""
-            }
-        }
-
-        private fun getHealth(health: Int): String {
-            when (health) {
-                BatteryManager.BATTERY_HEALTH_COLD -> return "COLD"
-                BatteryManager.BATTERY_HEALTH_DEAD -> return "DEAD"
-                BatteryManager.BATTERY_HEALTH_GOOD -> return "GOOD"
-                BatteryManager.BATTERY_HEALTH_OVERHEAT -> return "OVERHEAT"
-                BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE -> return "OVER VOLTAGE"
-                BatteryManager.BATTERY_HEALTH_UNKNOWN -> return "HEALTH_UNKNOWN"
-                else -> return "HEALTH_UNKNOWN"
-            }
-        }
-
-        private fun getBatteryStatus(health: Int): String {
-            when (health) {
-                BatteryManager.BATTERY_STATUS_CHARGING -> return "CHARGING"
-                BatteryManager.BATTERY_STATUS_DISCHARGING -> return "DISCHARGING"
-                BatteryManager.BATTERY_STATUS_FULL -> return "FUll"
-                BatteryManager.BATTERY_STATUS_NOT_CHARGING -> return "NOT_CHARGING"
-                BatteryManager.BATTERY_STATUS_UNKNOWN -> return "UNKNOWN"
-
-                else -> return "UNKNOWN"
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        unregisterReceiver(batteryBroadcastReceiver)
-        super.onDestroy()
+        return BatteryDetails()
     }
 
     fun initWS() {
@@ -719,5 +702,4 @@ class MainActivity : AppCompatActivity() {
 //        webSocket?.send("1st")
 
     }
-
 }

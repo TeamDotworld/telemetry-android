@@ -7,9 +7,9 @@ data class WifiDetails(
     var ssid: String? = null,
     var bssid: String? = null,
     var macAddress: String? = null,
-    var availableWifiLists:ArrayList<availableWifiList>?=null
+    var AvailableWifiLists:ArrayList<AvailableWifiList>?=null
     )
-data class availableWifiList(
+data class AvailableWifiList(
     private var ssid:String?=null,
     private var frequency:String?=null,
     private var channelWidth:String?=null,
@@ -48,7 +48,7 @@ data class BluetoothDetails(
 )
 
 data class LocationDetails(
-    private var getLongitude: Double = 0.0,
+    private var longitude: Double = 0.0,
     private var latitude: Double = 0.0
 )
 
@@ -100,7 +100,7 @@ data class MemoryDetails(
     private var runTimeFreeMemory: Long? = null
 )
 
-data class storageDetails(
+data class StorageDetails(
     private var totalInternalStorage: String? = null,
     private var availableInternalStorage: String? = null,
     private var totalExternalStorage: String? = null,
