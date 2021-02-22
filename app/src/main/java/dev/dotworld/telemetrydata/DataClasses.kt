@@ -4,21 +4,22 @@ data class WifiDetails(
     var ipAddress: String? = null,
     var networkId: String? = null,
     var linkSpeed: String? = null,
-    var ssid: String? = null,
+    var connectedSSID: String? = null,
     var bssid: String? = null,
     var macAddress: String? = null,
-    var AvailableWifiLists:ArrayList<AvailableWifiList>?=null
-    )
+    var AvailableWifiLists: ArrayList<AvailableWifiList>? = null
+)
+
 data class AvailableWifiList(
-    private var ssid:String?=null,
-    private var frequency:String?=null,
-    private var channelWidth:String?=null,
-    private var level:String?=null,
-    private var venueName:String?=null,
-    private var BSSID:String?=null,
-    private var capabilities:String?=null,
-    private var isPasspointNetwork:Boolean?=null,
-    private var timestamp:String?=null,
+    private var ssid: String? = null,
+    private var frequency: String? = null,
+    private var channelWidth: String? = null,
+    private var level: String? = null,
+    private var venueName: String? = null,
+    private var BSSID: String? = null,
+    private var capabilities: String? = null,
+    private var isPasspointNetwork: Boolean? = null,
+    private var timestamp: String? = null,
 
     )
 
@@ -39,12 +40,25 @@ data class SensoreDetails(
     var sensorType: String? = null
 )
 
-data class BluetoothDetails(
+data class PairedBluetoothDetails(
     private var name: String? = null,
     private var address: String? = null,
     private var type: String? = null,
     private var bluetoothClass: String? = null,
     private var bondState: String? = null,
+)
+
+data class AvailableBluetooth(
+    private var name: String? = null,
+    private var address: String? = null,
+    private var type: String? = null,
+    private var bluetoothClass: String? = null,
+    private var bondState: String? = null
+)
+
+data class BluetoothDetails(
+    var pairedBluetoothList: ArrayList<PairedBluetoothDetails>? = null,
+    var availableBluetoothList: ArrayList<AvailableBluetooth>? = null
 )
 
 data class LocationDetails(
@@ -86,19 +100,25 @@ data class DeviceDetails(
     var lastSecurityPatchDate: String? = null,
     var rooted: Boolean,
     var cpuModeName: String? = null,
-    var  vendor_id: String? = null,
-    var  cpuFamily: String? = null,
-    var  cpu_mhz: String? = null,
-    var  siblings: String? = null,
-    var  cache_alignment: String? = null,
-    var  processor: Int? = null,
-    var  OTGsupport: Boolean
+    var vendor_id: String? = null,
+    var cpuFamily: String? = null,
+    var cpu_mhz: String? = null,
+    var siblings: String? = null,
+    var cache_alignment: String? = null,
+    var processor: Int? = null,
+    var OTGsupport: Boolean,
+    var language: String? = null,
+    var localTimeZone: String? = null,
+    var radioVersion: String? = null,
+    var glVersion: String? = null,
+    var isPlayServicesAvailable: Boolean
 
 )
-data class cameraDetails (
-    private var cameraCount:Int,
-    private var cameraDetails:List<FormatItem>
-        )
+
+data class cameraDetails(
+    private var cameraCount: Int,
+    private var cameraDetails: List<FormatItem>
+)
 
 // get in mb
 data class MemoryDetails(
@@ -118,13 +138,22 @@ data class StorageDetails(
     private var availableExternalStorage: String? = null,
 
     )
+
 data class InstalledApps(
-    private var name: String?=null,
-    private var packageName: String?=null,
-    private var className: String?=null,
-    private var dataDir: String?=null,
+    private var name: String? = null,
+    private var packageName: String? = null,
+    private var className: String? = null,
+    private var dataDir: String? = null,
 )
+
 data class FormatItem(
     val title: String,
     val cameraId: String,
-    val format: Int)
+    val format: Int
+)
+
+data class SoundCardDetails(
+    var soundCardCount: Int,
+    var name: String? = null,
+    var alsa: String? = null
+)

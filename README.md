@@ -4,7 +4,7 @@ An Android App written in Kotlin to get telemetry data.
     - ipAddress
     - networkId
     - linkSpeed
-    - ssid
+    - connectedSSID
     - bssid
     - macAddress
     - availableWifiLists
@@ -45,7 +45,7 @@ An Android App written in Kotlin to get telemetry data.
     * latitude
 
 
-  * Device Details
+  * Device details
     * serial
     * model
     * id
@@ -65,15 +65,19 @@ An Android App written in Kotlin to get telemetry data.
     * lastSecurityPatchDate
     * rooted
     * cpuModeName
-    *vendor_id
-    *cpu_family
-    *cpu_mhz
-    *siblings
-    *cache_alignment
-    *process
-    *OTGsupport
+    * vendor_id
+    * cpu_family
+    * cpu_mhz
+    * siblings
+    * cache_alignment
+    * process
+    * OTGsupport
+    * language
+    * localTimeZone
+    * glVersion
+    * isPlayServicesAvailable
 
-* Memory Details
+* Memory details
     * availMem
     * lowMemory
     * threshold
@@ -82,7 +86,7 @@ An Android App written in Kotlin to get telemetry data.
     * runTimeTotalMemory
     * runTimeFreeMemory
 
-* Storage Details
+* Storage details
     * totalInternalStorage
     * availableInternalStorage
     * totalExternalStorage
@@ -99,3 +103,21 @@ An Android App written in Kotlin to get telemetry data.
         - title
         - cameraId
         - format
+
+* SoundCard details
+    * soundCardCount
+    * name
+    * alsa
+* Bluetooth details
+    * pairedBluetoothList
+        - name
+        - address
+        - type
+        - bluetoothClass
+        - bondState
+    * availableBluetoothList
+         - name
+         - address
+         - type
+         - bluetoothClass
+         - bondState

@@ -99,10 +99,18 @@ fun getLocationData(){
     }
 
     override fun onProviderEnabled(provider: String) {
-        super.onProviderEnabled(provider)
+        try {
+            if (isLOcation){
+                Log.d(TAG, "onProviderEnabled: ")
+                super.onProviderEnabled(provider)
+            }
+
+        }catch (e:java.lang.Exception){
+            Log.e(TAG, "onProviderEnabled: unavailable location" )
+        }
     }
 
     override fun onProviderDisabled(provider: String) {
-        super.onProviderDisabled(provider)
+        isLOcation=false
     }
 }

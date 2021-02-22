@@ -1,6 +1,7 @@
 package dev.dotworld.telemetrydata.utils
 
 import android.os.Build
+import android.util.Log
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -9,7 +10,7 @@ class RootUitls {
 
 
     companion object {
-        public fun checkRootedOrNot(): Boolean {
+        fun checkRootedOrNot(): Boolean {
             return (checkTags() || checkRootFiles() || checkSuperUser())
         }
 
@@ -45,6 +46,7 @@ class RootUitls {
                 return output.readLine() != null
 
             } catch (e: Exception) {
+                Log.e("RootUitls", "checkSuperUser: "+e )
                 e.printStackTrace()
                 return false
             } finally {
