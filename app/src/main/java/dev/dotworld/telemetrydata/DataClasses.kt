@@ -1,5 +1,7 @@
 package dev.dotworld.telemetrydata
 
+import android.util.Log
+
 data class WifiDetails(
     var ipAddress: String? = null,
     var networkId: String? = null,
@@ -111,8 +113,8 @@ data class DeviceDetails(
     var localTimeZone: String? = null,
     var radioVersion: String? = null,
     var glVersion: String? = null,
-    var isPlayServicesAvailable: Boolean
-
+    var isPlayServicesAvailable: Boolean,
+    var orientation: String
 )
 
 data class cameraDetails(

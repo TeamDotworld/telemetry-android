@@ -76,6 +76,7 @@ An Android App written in Kotlin to get telemetry data.
     * localTimeZone
     * glVersion
     * isPlayServicesAvailable
+    * orientation
 
 * Memory details
     * availMem

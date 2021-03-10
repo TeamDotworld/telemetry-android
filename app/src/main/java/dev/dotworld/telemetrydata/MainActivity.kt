@@ -10,6 +10,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.graphics.ImageFormat
 import android.hardware.Sensor
 import android.hardware.SensorManager
@@ -732,9 +733,24 @@ class MainActivity : AppCompatActivity() {
             timeZoneInGMTFormat,
             Build.getRadioVersion(),
             getGlVersion(this),
-            checkGooglePlayServicesAvailable()
+            checkGooglePlayServicesAvailable(),
+            getOrientation()
         )
     }
+
+    private  fun getOrientation():String{
+
+        val orientation = this.resources.configuration.orientation
+        if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+            Log.d(TAG, "orientation: Portrait")
+            // code for portrait mode
+        } else {
+            Log.d(TAG, "orientation: landscape")
+            // code for landscape mode
+        }
+        return if (orientation== Configuration.ORIENTATION_PORTRAIT){ "Portrait"} else {"landscape"}
+    }
+
 
     @SuppressLint("QueryPermissionsNeeded", "NewApi")
     private fun getAllInstallApps(): ArrayList<InstalledApps> {
